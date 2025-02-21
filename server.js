@@ -3,7 +3,7 @@ import fs from "fs";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import XLSX from "xlsx";
+import * as XLSX from 'xlsx';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
