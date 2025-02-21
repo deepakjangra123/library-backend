@@ -38,44 +38,59 @@ app.get("/api/download", async (req, res) => {
   try {
     const data1 = JSON.parse(await fs.promises.readFile(DATA_FILE, "utf8"));
     const data2 = JSON.parse(await fs.promises.readFile(DATA_FILE2, "utf8"));
+
+    // Merge the data
     const mergedJSON = data1.map((item, index) => ({
       ...item,
       ...data2[index],
     }));
-    const reorderColumns = (x, columnOrder) => {
-      return x.map(item => {
+
+    // Reorder columns function
+    const reorderColumns = (data, columnOrder) => {
+      return data.map(item => {
         const reorderedItem = {};
         columnOrder.forEach(col => {
-          reorderedItem[col] = item[col];
+          reorderedItem[col] = item[col] || ""; // Ensure all keys exist
         });
         return reorderedItem;
       });
     };
-    
+
+    // Define column order
     const columnOrder = [
       'ACCESSION', 'DATE ', 'NAME', 'TITLE', 'EDITION ',
       'VOLUME', 'PUBLISHER & PUBLICATION PLACE ', 'YEAR ', 'PAGES ', 'VOLUME ',
       'SOURCE ', 'COST ', 'DEPT', 'REMARK', 'CHALLAN NO.', 'CHALLAN DATE ',
       'PLACE'
     ];
-    
+
+    // Define column widths
     const columnWidths = [7, 17.28515625, 37, 45.28515625, 7.28, 7.28515625, 33.85546875, 9, 9, 9, 18.140625, 9, 14, 22, 13, 17.140625, 15];
-    
+
+    // Reorder data
     const reorderedData = reorderColumns(mergedJSON, columnOrder);
-    
+
+    // Create worksheet
     const ws = XLSX.utils.json_to_sheet(reorderedData);
-    
     ws['!rows'] = Array(reorderedData.length).fill({ hpx: 28.8 });
-    
     ws['!cols'] = columnWidths.map(width => ({ wch: width }));
-    
+
+    // Create workbook
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-    XLSX.writeFile(wb, 'output2.xlsx');
-    res.status(200).json({ message: "Downloaded file successfully" });
+
+    // Write workbook to a buffer
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+
+    // Set response headers for file download
+    res.setHeader("Content-Disposition", "attachment; filename=output.xlsx");
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+    // Send buffer as response
+    res.send(buffer);
   } catch (error) {
-    console.error("Error reading data file:", error);
-    res.status(500).json({ error: "Failed to download file" });
+    console.error("Error generating file:", error);
+    res.status(500).json({ error: "Failed to generate file" });
   }
 });
 
